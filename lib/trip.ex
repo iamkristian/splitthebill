@@ -5,7 +5,7 @@ defmodule Trip do
   Documentation for the GenServer `Trip`.
   """
 
-  defstruct members: [], expenses: []
+  defstruct members: [], expenses: [], payments: []
 
   @doc """
   GenServer.init/1 callback
@@ -15,24 +15,38 @@ defmodule Trip do
   @doc """
   GenServer.handle_call/3 callback
   """
-  def handle_call(:members, _from, state ), do: {:reply, state[:members], state}
-  def handle_call(:list_expenses, _from, state ), do: {:reply, state[:expenses], state}
+  def handle_call(:members, _from, state), do: {:reply, state[:members], state}
+  def handle_call(:list_expenses, _from, state), do: {:reply, state[:expenses], state}
+  def handle_call({ :balance, member }, _from, state) do
+    balance = sum_balance(member, state[:expenses])
+    {:reply, balance, state}
+  end
 
+  defp sum_balance(member, []), do: 0
+  defp sum_balance(member, expenses) do
+    expenses
+    |> Enum.filter(fn(exp) -> exp[:member] == member end)
+    |> Enum.reduce(0, fn(e, acc) -> e[:amount] + acc end)
+  end
 
   @doc """
   GenServer.handle_cast/2 callback
   """
   def handle_cast({:add_expense, expense}, state) do
-    newst = updateExpenses(expense, state)
+    newst = update_expenses(expense, state)
     {:noreply, newst}
   end
 
-  defp updateExpenses(expense, state) do
-    if Enum.member?(state[:members], expense[:member]) do
+  defp update_expenses(expense, state) do
+    if is_member?(expense[:member], state) do
       %{ expenses: state[:expenses] ++ [expense] , members: state[:members] }
     else
       state
     end
+  end
+
+  defp is_member?(member, state) do
+    Enum.member?(state[:members], member)
   end
 
   ### Client API
@@ -44,18 +58,7 @@ defmodule Trip do
   Trip.start_link(["Joe", "Fred", "Sussie"])
   """
   def start_link(members \\ []) do
-    GenServer.start_link(__MODULE__, %{members: members, expenses: []}, name: __MODULE__)
-  end
-
-  defp validate_members(members \\ []) do
-    [head | tail] = members
-    validate_member(head, tail)
-  end
-
-  defp validate_member(head, tail) do
-    [h | t] = tail
-    String.valid? head
-    validate_member(h, t)
+    GenServer.start_link(__MODULE__, %{members: members, expenses: [], payments: []}, name: __MODULE__)
   end
 
   @doc """
@@ -85,4 +88,13 @@ defmodule Trip do
   iex> Trip.list_expenses
   """
   def list_expenses, do: GenServer.call(__MODULE__, :list_expenses)
+
+  @doc """
+  balance
+  Shows the balance for a named member of the trip
+  Example:
+  iex> Trip.start_link(["Joe", "Fred", "Sussie"])
+  iex> Trip.balance("Joe")
+  """
+  def balance(member), do: GenServer.call(__MODULE__, { :balance, member })
 end

@@ -16,7 +16,7 @@ defmodule TripTest do
     test "start link with members", context do
       {:ok, pid} = start_supervised({Trip, context[:members]})
 
-      assert Trip.members == ["fred", "joe", "sussie"]
+      assert Trip.members == ["fred", "joe", "sussie", "groot"]
     end
   end
 
@@ -45,7 +45,17 @@ defmodule TripTest do
     setup [:data, :startup, :add_expenses]
 
     test "shows balance for joe", context do
-      assert Trip.list_expenses == [context[:f_exp]]
+      context[:j2_exp] |> Trip.add_expense
+      context[:j3_exp] |> Trip.add_expense
+      assert Trip.balance("joe") == 804
+    end
+
+    test "shows balance for fred", context do
+      assert Trip.balance("fred") == 250
+    end
+
+    test "shows balance for groot - no expenses", context do
+      assert Trip.balance("groot") == 0
     end
   end
 
@@ -53,8 +63,10 @@ defmodule TripTest do
     [
       f_exp: %{member: "fred", name: "Paintball", amount: 250 },
       j_exp: %{member: "joe", name: "Hotel", amount: 500 },
+      j2_exp: %{member: "joe", name: "Casino", amount: 300 },
+      j3_exp: %{member: "joe", name: "Subway", amount: 4 },
       s_exp: %{member: "sussie", name: "Restaurant", amount: 100 },
-      members: ["fred", "joe", "sussie"]
+      members: ["fred", "joe", "sussie", "groot"]
     ]
   end
 
