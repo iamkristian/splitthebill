@@ -59,12 +59,35 @@ defmodule TripTest do
     end
   end
 
+  describe "add_payment/1" do
+    setup [:data, :startup, :add_expenses]
+
+    test "add payment from groot to joe", context do
+      assert Trip.add_payment(context[:gj_pay]) == :ok
+    end
+
+    test "add payment from unknown member", context do
+      assert Trip.add_payment(%{sender: "thanos", receiver: "rocket", amount: 200 }) == :ok
+    end
+  end
+
+  describe "list_payments_settle_all_debts" do
+    setup [:data, :startup, :add_expenses, :add_payments]
+
+    test "list the payments need to settle all debts", context do
+      assert Trip.list_payments_settle_all_debts == 42
+    end
+  end
+
   defp data(context) do
     [
       f_exp: %{member: "fred", name: "Paintball", amount: 250 },
       j_exp: %{member: "joe", name: "Hotel", amount: 500 },
       j2_exp: %{member: "joe", name: "Casino", amount: 300 },
       j3_exp: %{member: "joe", name: "Subway", amount: 4 },
+      gj_pay: %{sender: "groot", receiver: "joe", amount: 100 },
+      fj_pay: %{sender: "fred", receiver: "joe", amount: 150 },
+      fs_pay: %{sender: "sussie", receiver: "joe", amount: 50 },
       s_exp: %{member: "sussie", name: "Restaurant", amount: 100 },
       members: ["fred", "joe", "sussie", "groot"]
     ]
@@ -79,5 +102,11 @@ defmodule TripTest do
     context[:f_exp] |> Trip.add_expense
     context[:j_exp] |> Trip.add_expense
     context[:s_exp] |> Trip.add_expense
+  end
+
+  defp add_payments(context) do
+    context[:gj_pay] |> Trip.add_payment
+    context[:fj_pay] |> Trip.add_payment
+    context[:fs_pay] |> Trip.add_payment
   end
 end

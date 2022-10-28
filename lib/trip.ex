@@ -21,6 +21,57 @@ defmodule Trip do
     balance = sum_balance(member, state[:expenses])
     {:reply, balance, state}
   end
+  def handle_call(:list_payments_settle_all_debts, _from, state) do
+    result = sum_payments_settle_all_debts(state[:members], state[:expenses], state[:payments])
+
+    {:reply, result , state}
+  end
+
+  defp sum_payments_settle_all_debts(members, [], []), do: 0
+  defp sum_payments_settle_all_debts(members, expenses, payments) do
+    balance = members
+              |> Enum.map(fn(m)-> %{ member: m, balance: sum_balance(m, expenses) } end)
+
+
+    sum = Enum.reduce(balance, 0, fn(b, acc) -> b[:balance] + acc end)
+    no_members = Enum.count(members)
+    trip_cost = sum/no_members
+
+    #    hvert medlem skal betale op til trip cost
+    ##groot skal betale trip_cost / member size-1 til hvert medlem minus de payments han allerede har lavet
+
+    payed= balance
+    |> Enum.map(fn(b)-> Map.put(b, :payments, sum_payments(b[:member], payments)) end)
+    owing = payed
+    |> Enum.map(fn(b)-> Map.put(b, :group_owes, (b[:balance]+(-b[:payments][:payed]+b[:payments][:received]))-trip_cost) end)
+
+    settle = owing
+    |> Enum.map(fn(b)-> settle_the_trip(b, members, no_members, owing) end)
+
+    balance ++ [sum] ++ [trip_cost] ++ payments ++ owing ++ settle
+  end
+
+
+
+  defp settle_the_trip(balance, members, no_members, owning) do
+    members
+    |> Enum.filter(fn(m)-> m != balance[:member] end)
+    |> Enum.map(fn(m)-> %{ sender: m, receiver: balance[:member], amount: balance[:group_owes]/no_members } end)
+  end
+
+  defp sum_payments(member, payments) do
+    payments
+      |> Enum.filter(fn(p)-> p[:sender] == member || p[:receiver] == member end)
+      |> Enum.reduce(%{payed: 0, received: 0}, fn(p, acc)-> assign_payment(member, p, acc) end)
+  end
+
+  defp assign_payment(member, payment, acc) do
+    if payment[:sender] == member do
+      Map.put(acc, :payed, acc[:payed] + payment[:amount])
+    else
+      Map.put(acc, :received, acc[:received] + payment[:amount])
+    end
+  end
 
   defp sum_balance(member, []), do: 0
   defp sum_balance(member, expenses) do
@@ -39,7 +90,20 @@ defmodule Trip do
 
   defp update_expenses(expense, state) do
     if is_member?(expense[:member], state) do
-      %{ expenses: state[:expenses] ++ [expense] , members: state[:members] }
+      Map.put(state, :expenses, state[:expenses] ++ [expense])
+    else
+      state
+    end
+  end
+
+  def handle_cast({:add_payment, payment}, state) do
+    newst = update_payments(payment, state)
+    {:noreply, newst}
+  end
+
+  defp update_payments(payment, state) do
+    if is_member?(payment[:sender], state) && is_member?(payment[:receiver], state) && payment[:sender] != payment[:receiver] do
+      Map.put(state, :payments, state[:payments] ++ [payment])
     else
       state
     end
@@ -97,4 +161,23 @@ defmodule Trip do
   iex> Trip.balance("Joe")
   """
   def balance(member), do: GenServer.call(__MODULE__, { :balance, member })
+
+  @doc """
+  add_payment/1
+  Adds a payment from a sender to a receiver with a given amount.
+
+  Example:
+  iex> Trip.start_link(["Joe", "Fred", "Sussie"])
+  iex> Trip.add_payment(%{ sender: "groot", receiver: "joe", amount: 45 })
+  """
+  def add_payment(payment), do: GenServer.cast(__MODULE__, { :add_payment, payment })
+
+  @doc """
+  list_payments_settle_all_debts/0
+
+  Example:
+  iex> Trip.start_link(["Joe", "Fred", "Sussie"])
+  iex> Trip.list_payments_settle_all_debts
+  """
+  def list_payments_settle_all_debts, do: GenServer.call(__MODULE__, :list_payments_settle_all_debts)
 end
