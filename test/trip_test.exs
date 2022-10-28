@@ -74,7 +74,7 @@ defmodule TripTest do
   describe "list_payments_settle_all_debts" do
     setup [:data, :startup, :add_expenses, :add_payments]
 
-    test "list the payments need to settle all debts", _context do
+    test "list the payments needed to settle all debts", _context do
       result = [
         %{amount: 75.0, receiver: "fred", sender: "groot"},
         %{amount: 25.0, receiver: "joe", sender: "groot"},
@@ -84,6 +84,14 @@ defmodule TripTest do
         %{amount: 50.0, receiver: "fred", sender: "joe"}
       ]
       assert Trip.list_payments_settle_all_debts == result
+    end
+  end
+
+  describe "list_payments_settle_all_debts with no data" do
+    setup [:data, :startup]
+
+    test "list the payments needed to settle all debts", _context do
+      assert Trip.list_payments_settle_all_debts == 0
     end
   end
 
