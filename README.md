@@ -22,7 +22,7 @@ be found at <https://hexdocs.pm/splitthebill>.
 
 ## Try it
 
-```
+```elixir
 $ iex -S mix
 
 Trip.start_link(["fred", "joe", "sussie", "groot"])
