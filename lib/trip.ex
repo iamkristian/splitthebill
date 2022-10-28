@@ -22,17 +22,20 @@ defmodule Trip do
   GenServer.handle_call/3 callback
   """
   def handle_call(:members, _from, state), do: {:reply, state[:members], state}
+
   def handle_call(:list_expenses, _from, state), do: {:reply, state[:expenses], state}
+
   def handle_call({ :balance, member }, _from, state) do
     balance = sum_balance(member, state[:expenses])
     {:reply, balance, state}
   end
+
   def handle_call(:list_payments_settle_all_debts, _from, state) do
     result = sum_payments_settle_all_debts(state[:members], state[:expenses], state[:payments])
     {:reply, result , state}
   end
 
-  defp sum_payments_settle_all_debts(members, [], []), do: 0
+  defp sum_payments_settle_all_debts(_members, [], []), do: 0
   defp sum_payments_settle_all_debts(members, expenses, payments) do
     balance = members
       |> Enum.map(fn(m)-> %{ member: m, balance: sum_balance(m, expenses) } end)
@@ -90,7 +93,7 @@ defmodule Trip do
     end
   end
 
-  defp sum_balance(member, []), do: 0
+  defp sum_balance(_member, []), do: 0
   defp sum_balance(member, expenses) do
     expenses
     |> Enum.filter(fn(exp) -> exp[:member] == member end)
@@ -105,6 +108,11 @@ defmodule Trip do
     {:noreply, newst}
   end
 
+  def handle_cast({:add_payment, payment}, state) do
+    newst = update_payments(payment, state)
+    {:noreply, newst}
+  end
+
   defp update_expenses(expense, state) do
     if is_member?(expense[:member], state) do
       Map.put(state, :expenses, state[:expenses] ++ [expense])
@@ -113,10 +121,6 @@ defmodule Trip do
     end
   end
 
-  def handle_cast({:add_payment, payment}, state) do
-    newst = update_payments(payment, state)
-    {:noreply, newst}
-  end
 
   defp update_payments(payment, state) do
     if is_member?(payment[:sender], state) && is_member?(payment[:receiver], state) && payment[:sender] != payment[:receiver] do
