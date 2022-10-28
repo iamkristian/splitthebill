@@ -3,6 +3,12 @@ defmodule Trip do
 
   @moduledoc """
   Documentation for the GenServer `Trip`.
+
+  Handles the problem of a group of friends going on a trip, splitting the
+  expenses equally.
+
+  Trip is a GenServer so start it up with start_link and a list of strings
+  stating the members.
   """
 
   defstruct members: [], expenses: [], payments: []
@@ -31,14 +37,18 @@ defmodule Trip do
     balance = members
       |> Enum.map(fn(m)-> %{ member: m, balance: sum_balance(m, expenses) } end)
 
+    # Find the sum total of the trip
     sum = Enum.reduce(balance, 0, fn(b, acc) -> b[:balance] + acc end)
     no_members = Enum.count(members)
+    # What should each member pay
     trip_cost = sum/no_members
 
+    # If members have payed each other it should add against the balance
     owing = balance
     |> Enum.map(fn(b)-> Map.put(b, :payments, sum_payments(b[:member], payments)) end)
     |> Enum.map(fn(b)-> Map.put(b, :group_owes, (b[:balance]+(b[:payments][:payed]-b[:payments][:received]))-trip_cost) end)
 
+    # Settle all debts
     settlement = owing
     |> Enum.map(fn(b)-> settle_the_trip(b, members, no_members, owing) end)
     |> Enum.reduce([], fn(l, acc)-> l++acc end)
@@ -56,6 +66,7 @@ defmodule Trip do
   defp settle_balance_for(balance, member, owing, no_members) do
     member_balance = hd Enum.filter(owing, fn(o)-> member == o[:member] end)
 
+    # Calculate what each member should pay, subtract what the member owes
     settle_balance = (balance[:group_owes]/no_members) - (member_balance[:group_owes]/no_members)
 
     if settle_balance < 0 do # The member owes the group
