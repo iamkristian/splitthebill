@@ -20,5 +20,26 @@ Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_do
 and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
 be found at <https://hexdocs.pm/splitthebill>.
 
+## Try it
 
+```
+$ iex -S mix
+
+Trip.start_link(["fred", "joe", "sussie", "groot"])
+
+Trip.add_expense(%{member: "fred", name: "Paintball", amount: 250 })
+Trip.add_expense(%{member: "joe", name: "Hotel", amount: 500 })
+Trip.add_expense(%{member: "sussie", name: "Restaurant", amount: 100 })
+
+Trip.balance("fred")
+Trip.balance("groot")
+
+Trip.list_expenses
+
+Trip.add_payment(%{sender: "groot", receiver: "joe", amount: 100 })
+Trip.add_payment(%{sender: "fred", receiver: "joe", amount: 150 })
+Trip.add_payment(%{sender: "sussie", receiver: "joe", amount: 50 })
+
+Trip.list_payments_settle_all_debts
+```
 
