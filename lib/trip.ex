@@ -23,40 +23,46 @@ defmodule Trip do
   end
   def handle_call(:list_payments_settle_all_debts, _from, state) do
     result = sum_payments_settle_all_debts(state[:members], state[:expenses], state[:payments])
-
     {:reply, result , state}
   end
 
   defp sum_payments_settle_all_debts(members, [], []), do: 0
   defp sum_payments_settle_all_debts(members, expenses, payments) do
     balance = members
-              |> Enum.map(fn(m)-> %{ member: m, balance: sum_balance(m, expenses) } end)
-
+      |> Enum.map(fn(m)-> %{ member: m, balance: sum_balance(m, expenses) } end)
 
     sum = Enum.reduce(balance, 0, fn(b, acc) -> b[:balance] + acc end)
     no_members = Enum.count(members)
     trip_cost = sum/no_members
 
-    #    hvert medlem skal betale op til trip cost
-    ##groot skal betale trip_cost / member size-1 til hvert medlem minus de payments han allerede har lavet
-
-    payed= balance
+    owing = balance
     |> Enum.map(fn(b)-> Map.put(b, :payments, sum_payments(b[:member], payments)) end)
-    owing = payed
-    |> Enum.map(fn(b)-> Map.put(b, :group_owes, (b[:balance]+(-b[:payments][:payed]+b[:payments][:received]))-trip_cost) end)
+    |> Enum.map(fn(b)-> Map.put(b, :group_owes, (b[:balance]+(b[:payments][:payed]-b[:payments][:received]))-trip_cost) end)
 
-    settle = owing
+    settlement = owing
     |> Enum.map(fn(b)-> settle_the_trip(b, members, no_members, owing) end)
+    |> Enum.reduce([], fn(l, acc)-> l++acc end)
+    |> Enum.uniq
 
-    balance ++ [sum] ++ [trip_cost] ++ payments ++ owing ++ settle
+    settlement
   end
 
-
-
-  defp settle_the_trip(balance, members, no_members, owning) do
+  defp settle_the_trip(balance, members, no_members, owing) do
     members
     |> Enum.filter(fn(m)-> m != balance[:member] end)
-    |> Enum.map(fn(m)-> %{ sender: m, receiver: balance[:member], amount: balance[:group_owes]/no_members } end)
+    |> Enum.map(fn(m)-> settle_balance_for(balance, m, owing, no_members) end)
+  end
+
+  defp settle_balance_for(balance, member, owing, no_members) do
+    member_balance = hd Enum.filter(owing, fn(o)-> member == o[:member] end)
+
+    settle_balance = (balance[:group_owes]/no_members) - (member_balance[:group_owes]/no_members)
+
+    if settle_balance < 0 do # The member owes the group
+      %{ sender: balance[:member], receiver: member, amount: -settle_balance }
+    else # The group owes the member
+      %{ sender: member, receiver: balance[:member], amount: settle_balance }
+    end
   end
 
   defp sum_payments(member, payments) do

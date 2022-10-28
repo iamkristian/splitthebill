@@ -5,7 +5,7 @@ defmodule TripTest do
   describe "start_link/1" do
     setup [:data]
 
-    test "start link", context do
+    test "start link", _context do
       {:ok, pid} = start_supervised(Trip)
 
       Process.exit(pid, :normal)
@@ -14,7 +14,7 @@ defmodule TripTest do
     end
 
     test "start link with members", context do
-      {:ok, pid} = start_supervised({Trip, context[:members]})
+      {:ok, _pid} = start_supervised({Trip, context[:members]})
 
       assert Trip.members == ["fred", "joe", "sussie", "groot"]
     end
@@ -27,7 +27,7 @@ defmodule TripTest do
       assert Trip.add_expense(context[:j_exp]) == :ok
     end
 
-    test "add_expense - unknown member", context do
+    test "add_expense - unknown member", _context do
       assert Trip.add_expense(%{member: :mac, name: "Paintball", amount: 250 }) == :ok
       assert Trip.list_expenses == []
     end
@@ -50,11 +50,11 @@ defmodule TripTest do
       assert Trip.balance("joe") == 804
     end
 
-    test "shows balance for fred", context do
+    test "shows balance for fred", _context do
       assert Trip.balance("fred") == 250
     end
 
-    test "shows balance for groot - no expenses", context do
+    test "shows balance for groot - no expenses", _context do
       assert Trip.balance("groot") == 0
     end
   end
@@ -66,7 +66,7 @@ defmodule TripTest do
       assert Trip.add_payment(context[:gj_pay]) == :ok
     end
 
-    test "add payment from unknown member", context do
+    test "add payment from unknown member", _context do
       assert Trip.add_payment(%{sender: "thanos", receiver: "rocket", amount: 200 }) == :ok
     end
   end
@@ -74,12 +74,20 @@ defmodule TripTest do
   describe "list_payments_settle_all_debts" do
     setup [:data, :startup, :add_expenses, :add_payments]
 
-    test "list the payments need to settle all debts", context do
-      assert Trip.list_payments_settle_all_debts == 42
+    test "list the payments need to settle all debts", _context do
+      result = [
+        %{amount: 75.0, receiver: "fred", sender: "groot"},
+        %{amount: 25.0, receiver: "joe", sender: "groot"},
+        %{amount: 12.5, receiver: "sussie", sender: "groot"},
+        %{amount: 62.5, receiver: "fred", sender: "sussie"},
+        %{amount: 12.5, receiver: "joe", sender: "sussie"},
+        %{amount: 50.0, receiver: "fred", sender: "joe"}
+      ]
+      assert Trip.list_payments_settle_all_debts == result
     end
   end
 
-  defp data(context) do
+  defp data(_context) do
     [
       f_exp: %{member: "fred", name: "Paintball", amount: 250 },
       j_exp: %{member: "joe", name: "Hotel", amount: 500 },
@@ -94,7 +102,7 @@ defmodule TripTest do
   end
 
   defp startup(context) do
-    {:ok, pid} = start_supervised({Trip, context[:members] })
+    {:ok, _pid} = start_supervised({Trip, context[:members] })
     :ok
   end
 
